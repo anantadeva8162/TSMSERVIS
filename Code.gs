@@ -2,18 +2,19 @@ const SPREADSHEET_ID = "1wKk0eJ-iB3i1OB5c97ccatff7UkNheQwGJDLQIqxLE4";
 const SHEET_NAME = "Data";
 
 function doGet() {
-  return HtmlService.createTemplateFromFile("Index")
-    .evaluate()
-    .setTitle("Data Peserta Servis Gratis - SMKN 1 Doko")
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  return ContentService
+    .createTextOutput("API DATA PESERTA SERVIS GRATIS SMKN 1 DOKO AKTIF")
+    .setMimeType(ContentService.MimeType.TEXT);
 }
 
-function simpanData(data) {
+function doPost(e) {
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEET_NAME);
 
-    if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEET_NAME);
+    }
 
     if (sheet.getLastRow() === 0) {
       sheet.appendRow([
@@ -32,17 +33,19 @@ function simpanData(data) {
       sheet.setFrozenRows(1);
     }
 
-    const nama = String(data.nama || "").trim();
-    const merkType = String(data.merkType || "").trim();
-    const nomorPolisi = String(data.nomorPolisi || "").trim().toUpperCase();
-    const whatsapp = String(data.whatsapp || "").trim().replace(/[\s\-]/g, "");
+    const p = e.parameter || {};
+
+    const nama = String(p.nama || "").trim();
+    const merkType = String(p.merkType || "").trim();
+    const nomorPolisi = String(p.nomorPolisi || "").trim().toUpperCase();
+    const whatsapp = String(p.whatsapp || "").trim().replace(/[\s\-]/g, "");
 
     if (!nama || !merkType || !nomorPolisi || !whatsapp) {
-      throw new Error("Semua kolom wajib diisi.");
+      return jsonResponse(false, "Semua kolom wajib diisi.");
     }
 
     if (!/^(08|628)[0-9]{8,13}$/.test(whatsapp)) {
-      throw new Error("Nomor WhatsApp tidak valid. Contoh: 081234567890");
+      return jsonResponse(false, "Nomor WhatsApp tidak valid.");
     }
 
     sheet.appendRow([
@@ -55,15 +58,18 @@ function simpanData(data) {
 
     sheet.autoResizeColumns(1, 5);
 
-    return {
-      success: true,
-      message: "Pendaftaran berhasil dikirim."
-    };
+    return jsonResponse(true, "Pendaftaran berhasil disimpan.");
 
   } catch (error) {
-    return {
-      success: false,
-      message: error.message
-    };
+    return jsonResponse(false, error.message);
   }
+}
+
+function jsonResponse(success, message) {
+  return ContentService
+    .createTextOutput(JSON.stringify({
+      success: success,
+      message: message
+    }))
+    .setMimeType(ContentService.MimeType.JSON);
 }
